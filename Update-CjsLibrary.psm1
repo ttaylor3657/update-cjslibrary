@@ -1,10 +1,10 @@
 <#
 .Synopsis
-   Update html files with hosted libaries and add the desired CreateJS library to the html and folder.
+   Update html files with hosted libraries and add the desired CreateJS library to the html and folder.
 .DESCRIPTION
    Will search all Adobe Animate published HTML5 CreateJS animations for hosted CreateJS libraries. 
-   If found, it will correct the html and add the supplied CreateJS library to the /libs folder in each animation. 
-   If you do not provide a path, the current folder will be processed. The script assumes that there is one HTML5 animation per folder.
+   If found, it will correct the html and add the supplied CreateJS library to the /libs folder in each animation folder. 
+   If you do not provide a path, the current folder will be processed. The script assumes that there is one CreateJS animation per folder.
 .PARAMETER Path
    Specifies the path to the folder containing the animations to be updated.
 .PARAMETER cjsPath
@@ -28,7 +28,8 @@
 .EXAMPLE
     Get-ChildItem C:\animations | ForEach{Update-CjsLibrary $_.Fullname -cjsPath C:\scripts\createjs-2015.11.26.min.js -recurse -zip}
 
-    Accepts the pipeline ouput of a command like Get-ChildItem, and processes each object. 
+    Accepts the pipeline ouput of a command like Get-ChildItem, and replaces the link in the HTML, adds the .js file for each item and subfolders. 
+    Each folder's contents are then zipped into a package. 
 #>
 function Update-CjsLibrary
 {
@@ -95,24 +96,24 @@ function Update-CjsLibrary
 
         forEach ($updateFile in $fileList) {
             $oldHTML = get-content $updateFile -Encoding UTF8
-            $newHTML = ""
+            $newHtml = ""
             $changes = 0
             $i = 0
         
             while ($i -lt $oldHTML.length) {
-                $oldhtmlText = [string]$oldHTML[$i]
-                $tempLine = $oldhtmlText     
+                $oldHtmlText = [string]$oldHTML[$i]
+                $tempLine = $oldHtmlText     
                 $tempLine = $tempLine -Replace '<script src="https:\/\/code\.createjs\.com\/.*$', $cjsReplaceString
                 if ($tempLine -ne $oldHTMLText) {
                     $changes++
                 }
                 $tempLine += "`n"
-                $newHTML += $tempLine
+                $newHtml += $tempLine
                 $i++
             }
     
             if ($changes -ne 0) { 
-                $newHTML | Out-File $updateFile -Encoding UTF8
+                $newHtml | Out-File $updateFile -Encoding UTF8
                 $libPath = Split-Path $updateFile
                 $zipFile = (Get-Item $updateFile).Basename
                     
@@ -123,16 +124,16 @@ function Update-CjsLibrary
                     }
                     
                     if ($zip){
-                    if($PSCmdlet.ShouldProcess($zipFile, "Compress-Archive")){ 
-                        $filesToZip = Get-ChildItem $libPath | Where-Object { $_.Name -like "images" -or $_.Name -like "libs" -or $_.Name -like "sounds" -or $_.Name -like "*.html" -or $_.Name -like "*.jpg" -or $_.Name -like "*.js" }                  
-                        $zipFileFullPath = @()
-            
-                        ForEach ($fileToZip in $FilesToZip) {
-                            $zipFileFullPath += $fileToZip.FullName
+                        if($PSCmdlet.ShouldProcess($zipFile, "Compress-Archive")){ 
+                            $filesToZip = Get-ChildItem $libPath | Where-Object { $_.Name -like "images" -or $_.Name -like "libs" -or $_.Name -like "sounds" -or $_.Name -like "*.html" -or $_.Name -like "*.jpg" -or $_.Name -like "*.js" }                  
+                            $zipFileFullPath = @()
+                
+                            ForEach ($fileToZip in $filesToZip) {
+                                $zipFileFullPath += $fileToZip.FullName
+                            }
+                                        
+                            Compress-Archive -Path $zipFileFullPath -DestinationPath $libPath\$zipFile -Force
                         }
-                                    
-                        Compress-Archive -Path $zipFileFullPath -DestinationPath $libPath\$zipFile -Force
-                    }
                     }
             }
     
@@ -143,8 +144,8 @@ function Update-CjsLibrary
     }
     
     end {
-        Remove-Variable oldHTML
-        Remove-Variable newHTML
+        Remove-Variable oldHtml
+        Remove-Variable newHtml
     }
 }
 
